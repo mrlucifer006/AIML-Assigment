@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Paper Scissors AI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: #333;
+        }
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        video {
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        #controls {
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+        .win { color: green; font-weight: bold; }
+        .lose { color: red; font-weight: bold; }
+        .tie { color: orange; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Rock Paper Scissors AI</h1>
+    <div id="container">
+        <video id="webcam" autoplay playsinline width="400" height="300"></video>
+        <canvas id="canvas" width="400" height="300" style="display:none;"></canvas>
+        <div id="controls">
+            <button onclick="playRound()">Play Round</button>
+        </div>
+        <div id="result">Waiting for you to play...</div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const resultDiv = document.getElementById('result');
+
+        // Access Webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing webcam:", err);
+                resultDiv.innerHTML = "Error accessing webcam. Please allow camera access.";
+            });
+
+        async function playRound() {
+            // Capture image from video stream
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert canvas to blob
+            canvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('file', blob, 'image.jpg');
+
+                resultDiv.innerHTML = "Thinking...";
+
+                try {
+                    const response = await fetch('/play', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    let resultColor = 'black';
+                    if (data.result.includes("Win")) resultColor = 'green';
+                    else if (data.result.includes("Tie")) resultColor = 'orange';
+                    else resultColor = 'red';
+
+                    resultDiv.innerHTML = `
+                        <p>You: <strong>${data.user_move}</strong> (Confidence: ${data.confidence})</p>
+                        <p>Computer: <strong>${data.computer_move}</strong></p>
+                        <h2 style="color: ${resultColor}">${data.result}</h2>
+                    `;
+                } catch (error) {
+                    console.error("Error:", error);
+                    resultDiv.innerHTML = "Error communicating with server.";
+                }
+            }, 'image/jpeg');
+        }
+    </script>
+</body>
+</html>

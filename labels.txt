@@ -1,0 +1,3 @@
+0 sicssor
+1 paper
+2 rock
